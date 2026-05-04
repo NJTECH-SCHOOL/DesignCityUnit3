@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Scene Switcher</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- Added OrbitControls script -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body { margin: 0; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #111; color: white; overflow: hidden; }
+        #canvas-container { width: 100%; height: 60vh; cursor: grab; }
+        #canvas-container:active { cursor: grabbing; }
+        .ui { text-align: center; padding: 20px; z-index: 10; }
+        h1 { margin: 10px 0; font-size: 2rem; }
+        p { color: #aaa; margin-bottom: 20px; }
+        button { padding: 12px 30px; font-size: 1rem; cursor: pointer; border: none; border-radius: 5px; background: #007bff; color: white; transition: 0.3s; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div class="ui">
+        <h1 id="title">My Model 1</h1>
+        <p id="description">Description for the first imported model.</p>
+        <button id="nextBtn">Next</button>
+    </div>
+
+    <script>
+        let scene, camera, renderer, currentModel, controls;
+        let counter = 0;
+        const loader = new THREE.GLTFLoader();
+
+        const content = [
+            { title: "Houses", desc: "Tired of living in the city? Try a family sized house. It has a great location as it is near a park, mall, school, and the downtown, urban city..", file: 'modelone.glb' },
+            { title: "Condominium Complex", desc: "Do you think that a house is too big for or are you just looking for somthing cheaper? the Condominium Complex building is filled with beautiful condos to live it.", file: 'modeltwo.glb' },
+            { title: "The Trusted Build", desc: "Buy an apartment in The Trusted Building as it has little more room compared to condos and better availibilty! if you are a business owner, this is also for you as you can buy this building to place your stores.", file: 'modelthree.glb' },
+            { title: "Cube Two Mall", desc: "Living in the city but need somewhere to buys clothes, furniture, and groceries? This is a place for you, at Cube Two Mall.", file: 'modelfour.glb' }
+        ];
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / (window.innerHeight * 0.6), 0.1, 1000);
+            camera.position.set(0, 2, 8);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight * 0.6);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // Added OrbitControls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+
+            // Brighter Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 5);
+            scene.add(ambientLight);
+            
+            const mainLight = new THREE.DirectionalLight(0xffffff, 5);
+            mainLight.position.set(10, 10, 10);
+            scene.add(mainLight);
+
+            const fillLight = new THREE.DirectionalLight(0xffffff, 5);
+            fillLight.position.set(-10, 0, -10);
+            scene.add(fillLight);
+
+            updateModel();
+            animate();
+        }
+
+        function updateModel() {
+            if (currentModel) scene.remove(currentModel);
+
+            const data = content[counter];
+            
+            loader.load(data.file, (gltf) => {
+                currentModel = gltf.scene;
+                
+                // Centering and making it bigger
+                const box = new THREE.Box3().setFromObject(currentModel);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                
+                // Automatic scaling to make models look "big" regardless of original size
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const scale = 5 / maxDim; // Adjust '5' to change desired visual size
+                currentModel.scale.set(scale, scale, scale);
+                
+                // Reposition to center
+                currentModel.position.sub(center.multiplyScalar(scale)); 
+                
+                scene.add(currentModel);
+            }, undefined, (error) => {
+                console.error("Make sure file paths are correct!", error);
+            });
+
+            document.getElementById('title').innerText = data.title;
+            document.getElementById('description').innerText = data.desc;
+        }
+
+        document.getElementById('nextBtn').onclick = () => {
+            counter = (counter + 1) % content.length;
+            updateModel();
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (controls) controls.update(); 
+            // Rotation is now optional since we have OrbitControls
+            if (currentModel && !controls.active) {
+                currentModel.rotation.y += 0.005;
+            }
+            renderer.render(scene, camera);
+        }
+
+        window.onresize = () => {
+            camera.aspect = window.innerWidth / (window.innerHeight * 0.6);
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight * 0.6);
+        };
+
+        window.onload = init;
+    </script>
+</body>
+</html>
